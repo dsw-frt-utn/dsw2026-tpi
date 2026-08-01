@@ -100,7 +100,6 @@ namespace Dsw2026Tpi.Application.Services
         {
             var firtsDay = new DateOnly(rule.Year, rule.Month, 1);
             var lastDay = firtsDay.AddMonths(1).AddDays(-1);
-
             var holidaysFile = Path.Combine(AppContext.BaseDirectory, "Sources", "holidays.json");
 
             for (var date = firtsDay; date <= lastDay; date = date.AddDays(1))
@@ -110,7 +109,7 @@ namespace Dsw2026Tpi.Application.Services
                     continue;
                 }
 
-                if(date.IsHoliday(holidaysFile))
+                if (date.IsHoliday(holidaysFile))
                 {
                     continue;
                 }
