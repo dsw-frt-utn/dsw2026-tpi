@@ -22,68 +22,141 @@ namespace Dsw2026Tpi.Application.Services
             _logger = logger;
         }
 
-        public async Task<AppointmentModel.Response> CreateAppointment(AppointmentModel.Request request)
+
+        public async Task<AppointmentModel.Response> CreateAppointment(string userId, AppointmentModel.Request request)
         {
             request.Reason.ValidateReason();
             request.Patient.ValidatePatient();
 
-            var slot = await _persistence.GetById<AvailabilitySlot>(request.AvailabilitySlotId, nameof(AvailabilitySlot.AvailabilityRule))
-                       ?? throw new EntityNotFoundException(nameof(AvailabilitySlot));
+            var slot = await _persistence.GetById<AvailabilitySlot>(
+                request.AvailabilitySlotId,
+                nameof(AvailabilitySlot.AvailabilityRule))
+                ?? throw new EntityNotFoundException(nameof(AvailabilitySlot));
 
             slot.ValidateSlotForBooking(request.DoctorId);
 
-            var patient = await _persistence.First<Patient>(p => p.Dni == request.Patient!.Dni)
+            var patient = await _persistence.First<Patient>(
+                p => p.UserId == userId)
                 ?? throw new EntityNotFoundException(nameof(Patient));
-            var patientId = patient.Id; 
+
+            if (patient.Dni != request.Patient!.Dni)
+            {
+                throw new AuthorizationException();
+            }
+
+            var patientId = patient.Id;
+
+            await _persistence.BeginTransactionAsync();
+
+            Appointment appointment;
 
             try
             {
-                slot.Book();
-                await _persistence.Update(slot);
+                var slotBooked = await _persistence.TryBookAvailabilitySlot(slot.Id);
 
-                var appointment = new Appointment(patientId, slot.Id, request.Reason);
+                if (!slotBooked)
+                {
+                    throw new ConflictException(
+                        ErrorCodes.APPOINTMENT_CONFLICT,
+                        nameof(ErrorCodes.APPOINTMENT_CONFLICT));
+                }
+
+                appointment = new Appointment(patientId, slot.Id, request.Reason);
                 await _persistence.Add(appointment);
-                await _logger.RegistrarAsync(
-                        modulo: "Appointments",
-                        accion: "CreateAppointment",
-                        detalle: $"Cita {appointment.Id} registrada para el paciente {patientId}, slot {slot.Id}");
 
-                return appointment.ToResponse(patient, slot);
+                await _persistence.CommitTransactionAsync();
+            }
+            catch (ConflictException)
+            {
+                await _persistence.RollbackTransactionAsync();
+
+                await _logger.RegistrarAsync(
+                    modulo: "Appointments",
+                    accion: "CreateAppointment",
+                    detalle: $"Conflicto al reservar el slot {slot.Id}",
+                    nivel: LogNivel.Warning);
+
+                throw;
             }
             catch (DbUpdateConcurrencyException)
             {
-                await _logger.RegistrarAsync(
-                        modulo: "Appointments",
-                        accion: "CreateAppointment",
-                        detalle: $"Conflicto de concurrencia al reservar el slot {slot.Id}",
-                        nivel: LogNivel.Warning); 
-                throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT, nameof(ErrorCodes.APPOINTMENT_CONFLICT));
-            }
-        }
+                await _persistence.RollbackTransactionAsync();
 
-        public async Task DeleteAppointment(Guid idAppointment)
-        {
-            var appointment = await _persistence.GetById<Appointment>(idAppointment, nameof(Appointment.AvailabilitySlot)) 
-                ?? throw new EntityNotFoundException(nameof(Appointment));
-            appointment.Cancel();
-            appointment.AvailabilitySlot!.Release();
-            await _persistence.Update<Appointment>(appointment);
-            await _persistence.Update<AvailabilitySlot>(appointment.AvailabilitySlot);
+                await _logger.RegistrarAsync(
+                    modulo: "Appointments",
+                    accion: "CreateAppointment",
+                    detalle: $"Conflicto de concurrencia al reservar el slot {slot.Id}",
+                    nivel: LogNivel.Warning);
+
+                throw new ConflictException(
+                    ErrorCodes.APPOINTMENT_CONFLICT,
+                    nameof(ErrorCodes.APPOINTMENT_CONFLICT));
+            }
+            catch
+            {
+                await _persistence.RollbackTransactionAsync();
+                throw;
+            }
 
             await _logger.RegistrarAsync(
-                        modulo: "Appointments",
-                        accion: "DeleteAppointment",
-                        detalle: $"Cita {appointment.Id} del paciente {appointment.PatientId} eliminada");
+                modulo: "Appointments",
+                accion: "CreateAppointment",
+                detalle: $"Cita {appointment.Id} registrada para el paciente {patientId}, slot {slot.Id}");
 
+            return appointment.ToResponse(patient, slot);
         }
 
-        public async Task<IEnumerable<AppointmentSummaryModel.Response>> GetAppointmentByDni(long dni) 
+
+
+        public async Task DeleteAppointment(Guid idAppointment, string userId)
         {
-            var patient = await _persistence.First<Patient>(p => p.Dni == dni)
+            var appointment = await _persistence.GetById<Appointment>(
+                idAppointment,
+                nameof(Appointment.AvailabilitySlot),
+                nameof(Appointment.Patient))
+                ?? throw new EntityNotFoundException(nameof(Appointment));
+
+            if (appointment.Patient?.UserId != userId)
+            {
+                throw new AuthorizationException();
+            }
+
+            await _persistence.BeginTransactionAsync();
+
+            try
+            {
+                appointment.Cancel();
+                appointment.AvailabilitySlot!.Release();
+
+                await _persistence.Update<Appointment>(appointment);
+                await _persistence.Update<AvailabilitySlot>(appointment.AvailabilitySlot);
+
+                await _persistence.CommitTransactionAsync();
+            }
+            catch
+            {
+                await _persistence.RollbackTransactionAsync();
+                throw;
+            }
+
+            await _logger.RegistrarAsync(
+                modulo: "Appointments",
+                accion: "DeleteAppointment",
+                detalle: $"Cita {appointment.Id} del paciente {appointment.PatientId} cancelada");
+        }
+
+
+        public async Task<IEnumerable<AppointmentSummaryModel.Response>>
+        GetAppointmentByDni(string userId)
+        {
+            var patient = await _persistence.First<Patient>(
+                p => p.UserId == userId)
                 ?? throw new EntityNotFoundException(nameof(Patient));
+
             var appointments = await _persistence.GetFiltered<Appointment>(a =>
-                (a.PatientId == patient.Id) &&
-                (a.Estado == Estado.BOOKED));
+                a.PatientId == patient.Id &&
+                a.Estado == Estado.BOOKED);
+
             return appointments!.Select(a => a.ToSummaryResponse());
         }
 
