@@ -9,6 +9,8 @@ namespace Dsw2026Tpi.Application.Interfaces
             int pageSize, 
             int pageIndex, 
             string? name = null);
+        Task<SpecialityModel.Response> GetById(
+            Guid id);
         Task<SpecialityModel.Response> Create(
             SpecialityModel.Request request);
         Task<SpecialityModel.Response> Update(
@@ -16,5 +18,7 @@ namespace Dsw2026Tpi.Application.Interfaces
             SpecialityModel.Request request);
         Task Delete(
             Guid id);
+        Task<IReadOnlyCollection<SpecialityModel.DoctorItem>> GetDoctors(
+            Guid specialtyId);
     }
 }
