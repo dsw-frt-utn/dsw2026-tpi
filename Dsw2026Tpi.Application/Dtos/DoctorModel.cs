@@ -23,4 +23,9 @@ public record DoctorModel
         string StartTime, 
         string EndTime);
 
+    public record SlotResponse(
+        Guid Id,
+        DateOnly Date,
+        string StartTime);
+
 }

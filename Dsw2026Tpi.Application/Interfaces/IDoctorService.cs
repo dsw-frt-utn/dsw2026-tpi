@@ -9,6 +9,8 @@ public interface IDoctorService
         int pageSize, 
         int pageIndex, 
         string? name = null);
+    Task<DoctorModel.Response> GetById(
+        Guid id);
     Task<DoctorModel.Response> Create(
         DoctorModel.Request request);
     Task<DoctorModel.Response> Update(
@@ -18,4 +20,8 @@ public interface IDoctorService
         Guid id);
     Task<IReadOnlyCollection<DoctorModel.AvailabilityResponse>>  GetAvailabilities(
         Guid doctorId);
+    Task<IReadOnlyCollection<DoctorModel.SlotResponse>> GetSlots(
+        Guid doctorId,
+        DateOnly from,
+        DateOnly to);
 }
