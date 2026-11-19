@@ -124,11 +124,29 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
         }
         
         /// <summary>
+        ///   Busca una cadena traducida similar a No se puede eliminar el médico porque tiene turnos reservados.
+        /// </summary>
+        public static string DOCTOR_HAS_APPOINTMENTS {
+            get {
+                return ResourceManager.GetString("DOCTOR_HAS_APPOINTMENTS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Busca una cadena traducida similar a El médico indicado no existe.
         /// </summary>
         public static string DOCTOR_NOT_FOUND {
             get {
                 return ResourceManager.GetString("DOCTOR_NOT_FOUND", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a No hay médicos relacionados con la especialidad indicada.
+        /// </summary>
+        public static string DOCTORS_NOT_FOUND {
+            get {
+                return ResourceManager.GetString("DOCTORS_NOT_FOUND", resourceCulture);
             }
         }
         
@@ -237,6 +255,15 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
         public static string SLOT_NOT_AVAILABLE {
             get {
                 return ResourceManager.GetString("SLOT_NOT_AVAILABLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a No se puede eliminar la especialidad porque tiene médicos asociados.
+        /// </summary>
+        public static string SPECIALITY_HAS_DOCTORS {
+            get {
+                return ResourceManager.GetString("SPECIALITY_HAS_DOCTORS", resourceCulture);
             }
         }
         
