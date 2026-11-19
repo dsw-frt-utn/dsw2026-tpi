@@ -30,9 +30,10 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
             .IsRequired();
 
         builder.HasOne(x => x.Speciality)
-            .WithMany()
+            .WithMany(speciality => speciality.Doctors)
             .HasForeignKey(x => x.SpecialityId)
             .IsRequired()
             .OnDelete(DeleteBehavior.Restrict);
+
     }
 }

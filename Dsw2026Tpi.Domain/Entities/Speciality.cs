@@ -5,15 +5,17 @@ namespace Dsw2026Tpi.Domain.Entities;
 
 public class Speciality : EntityBase
 {
+    private readonly List<Doctor> _doctors = [];
     public string Name { get; private set; }
 
     public string Description { get; private set; }
 
     public bool Deleted { get; private set; }
 
+    public IReadOnlyCollection<Doctor> Doctors => _doctors.AsReadOnly();
     #region Constructor for EF
 
-    #pragma warning disable CS8618
+#pragma warning disable CS8618
     private Speciality() { }
     #pragma warning restore CS8618
 
@@ -44,6 +46,23 @@ public class Speciality : EntityBase
         Deleted = true;
     }
 
+    public bool HasDoctors => _doctors.Any(doctor => !doctor.Deleted);
+
+    public Doctor AddDoctor(string name, string? licenseNumber) =>
+    new(name, licenseNumber, this);
+
+    internal void Register(Doctor doctor)
+    {
+        if (!_doctors.Contains(doctor))
+        {
+            _doctors.Add(doctor);
+        }
+    }
+
+    internal void RemoveDoctor(Doctor doctor)
+    {
+        _doctors.Remove(doctor);
+    }
     public static void ValidateInput(string? name, string? description) => Validate(name!, description!);
 
     private static void Validate(string name, string description)
