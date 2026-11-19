@@ -33,6 +33,7 @@ public class SpecialityServiceGetByIdTests
         // Assert
         Assert.Equal(speciality.Id, resultado.Id);
         Assert.Equal("Cardiología", resultado.Name);
+        Assert.Equal("Especialidad del corazón", resultado.Description);
         Assert.True(resultado.IsActive);
     }
 
