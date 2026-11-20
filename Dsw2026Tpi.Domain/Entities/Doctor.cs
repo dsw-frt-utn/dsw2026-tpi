@@ -6,20 +6,21 @@ namespace Dsw2026Tpi.Domain.Entities;
 public class Doctor : EntityBase
 {
     private readonly List<AvailabilityRule> _availabilities = [];
+
     public string Name { get; private set; }
 
     public string? LicenseNumber { get; private set; }
 
     public bool Deleted { get; private set; }
 
-    //Experto: el médico sabe si puede recibir turnos (no está eliminado).
     public bool IsBookable => !Deleted;
+
     public Guid SpecialityId { get; private set; }
 
     public Speciality Speciality { get; private set; }
-    
-    //¿Reglas de disponibilidad del médico. La lista es privada: se crean con <see cref="AddAvailability">
+
     public IReadOnlyCollection<AvailabilityRule> Availabilities => _availabilities.AsReadOnly();
+
     #region Constructor for EF
 #pragma warning disable CS8618
     private Doctor()
@@ -28,15 +29,14 @@ public class Doctor : EntityBase
 #pragma warning restore CS8618
     #endregion
 
-    //Lo crea su especialidad (Creador): ver <see cref="Speciality.AddDoctor(string, string?, bool)">
     internal Doctor(
-        string name, 
-        string? licenseNumber, 
-        Speciality speciality, 
+        string name,
+        string? licenseNumber,
+        Speciality speciality,
         Guid? id = null) : base(id)
     {
         Validate(name, licenseNumber, speciality);
-       
+
         Name = name.Trim();
         LicenseNumber = string.IsNullOrWhiteSpace(licenseNumber) ? null : licenseNumber.Trim();
         Deleted = false;
@@ -44,14 +44,15 @@ public class Doctor : EntityBase
     }
 
     public void Update(
-        string name, 
-        string? licenseNumber, 
+        string name,
+        string? licenseNumber,
         Speciality speciality)
     {
         Validate(name, licenseNumber, speciality);
 
         Name = name.Trim();
         LicenseNumber = string.IsNullOrWhiteSpace(licenseNumber) ? null : licenseNumber.Trim();
+
         if (speciality.Id != SpecialityId)
         {
             Speciality?.RemoveDoctor(this);
@@ -62,12 +63,9 @@ public class Doctor : EntityBase
     public void Delete()
     {
         Deleted = true;
-
     }
 
-    //Experto: el médico conoce sus disponibilidades
 
-    //Indica si el rango pisa una disponibilidad vigente (no eliminada) del mismo día, mes y año.
     public bool HasAvailabilityOverlap(
         byte month,
         short year,
@@ -81,9 +79,8 @@ public class Doctor : EntityBase
             && rule.DayOfWeek == dayOfWeek
             && startTime < rule.EndTime
             && rule.StartTime < endTime);
-    //Creador: el médico crea sus disponibilidades
 
-    //Crea y registra una disponibilidad. Falla con conflicto si se superpone con otra vigente.
+
     public AvailabilityRule AddAvailability(
         byte month,
         short year,
@@ -105,8 +102,6 @@ public class Doctor : EntityBase
         return rule;
     }
 
-    //Da de baja las disponibilidades vigentes del mes y sus turnos libres futuros.
-    //Los turnos pasados o reservados se conservan.
     public void ClearAvailabilities(
         byte month,
         short year,
@@ -129,6 +124,7 @@ public class Doctor : EntityBase
         SpecialityId = speciality.Id;
         speciality.Register(this);
     }
+
     private static void Validate(
         string name,
         string? licenseNumber,
@@ -160,5 +156,4 @@ public class Doctor : EntityBase
                 .WithDetail("specialityId", "Debe corresponder a una especialidad existente.");
         }
     }
-
 }

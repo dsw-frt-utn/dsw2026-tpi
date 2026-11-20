@@ -1,4 +1,4 @@
-﻿using Dsw2026Tpi.Application.Dtos;
+using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Identity;
 using Dsw2026Tpi.Domain.Entities;
@@ -23,10 +23,13 @@ public class SpecialityController : AppController
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetAll(
         [FromQuery] int pageSize=10, 
-        [FromQuery] int pageIndex=1, 
+        [FromQuery] int pageIndex = 1, 
         [FromQuery] string? name = null)
     {
-        var specialities = await _service.GetAll(pageSize, pageIndex, name);
+        var specialities = await _service.GetAll(
+            pageSize,
+            pageIndex,
+            name);
 
         return Ok(specialities);
     }
@@ -93,7 +96,6 @@ public class SpecialityController : AppController
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
         await _service.Delete(id);

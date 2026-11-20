@@ -7,7 +7,6 @@ using Dsw2026Tpi.Domain.Constants;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 
-
 namespace Dsw2026Tpi.Application.Services;
 
 public class DoctorService : IDoctorService
@@ -22,8 +21,8 @@ public class DoctorService : IDoctorService
     }
 
     public async Task<Pagination<DoctorModel.Response>> GetAll(
-        int pageSize, 
-        int pageIndex, 
+        int pageSize,
+        int pageIndex,
         string? name = null)
     {
         RequestValidations.ValidatePagination(pageSize, pageIndex);
@@ -31,7 +30,7 @@ public class DoctorService : IDoctorService
         var normalizedName = RequestValidations.NormalizeNameFilter(name);
 
         var page = await _persistence.Paginate<Doctor, string>(
-            pageSize, 
+            pageSize,
             pageIndex,
             d => !d.Deleted
                 && (normalizedName == null || d.Name.Contains(normalizedName)),
@@ -42,7 +41,7 @@ public class DoctorService : IDoctorService
     }
 
     public async Task<DoctorModel.Response> GetById(
-    Guid id)
+        Guid id)
     {
         var doctor = await _persistence.GetById<Doctor>(id, nameof(Doctor.Speciality));
 
@@ -75,8 +74,9 @@ public class DoctorService : IDoctorService
 
         return Map(doctor);
     }
+
     public async Task<DoctorModel.Response> Update(
-        Guid id, 
+        Guid id,
         DoctorModel.Request request)
     {
         var doctor = await _persistence.GetById<Doctor>(id, nameof(Doctor.Speciality))
@@ -132,7 +132,6 @@ public class DoctorService : IDoctorService
 
         await _persistence.Update(doctor);
         await _persistence.SaveChangesAsync();
-
     }
 
     public async Task<IReadOnlyCollection<DoctorModel.AvailabilityResponse>>
@@ -142,7 +141,7 @@ public class DoctorService : IDoctorService
         await EnsureDoctorExists(doctorId);
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        
+
         var rules = await _persistence.GetFiltered<AvailabilityRule>(
             rule => rule.DoctorId == doctorId
                 && !rule.Deleted
@@ -224,4 +223,3 @@ public class DoctorService : IDoctorService
         }
     }
 }
-
