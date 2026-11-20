@@ -139,12 +139,6 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
             }
         }
         
-        public static string REGISTER_USER_INVALID {
-            get {
-                return ResourceManager.GetString("REGISTER_USER_INVALID", resourceCulture);
-            }
-        }
-        
         public static string SCHEDULE_OVERLAP {
             get {
                 return ResourceManager.GetString("SCHEDULE_OVERLAP", resourceCulture);
