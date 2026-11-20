@@ -166,7 +166,7 @@ namespace Dsw2026Tpi.Application.Services
 
                     if (!isPastSlotToday)
                     {
-                        slots.Add(new AvailabilitySlot(rule, rule.DoctorId, currentDate, currentSlotStart, currentSlotEnd));
+                        slots.Add(rule.AddSlot(currentDate, currentSlotStart, currentSlotEnd));
                     }
 
                     currentSlotStart = currentSlotEnd;

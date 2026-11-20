@@ -5,16 +5,21 @@ namespace Dsw2026Tpi.Domain.Entities;
 
 public class Doctor : EntityBase
 {
+    private readonly List<AvailabilityRule> _availabilities = [];
     public string Name { get; private set; }
 
     public string? LicenseNumber { get; private set; }
 
     public bool Deleted { get; private set; }
 
+    //Experto: el médico sabe si puede recibir turnos (no está eliminado).
+    public bool IsBookable => !Deleted;
     public Guid SpecialityId { get; private set; }
 
     public Speciality Speciality { get; private set; }
-
+    
+    //¿Reglas de disponibilidad del médico. La lista es privada: se crean con <see cref="AddAvailability">
+    public IReadOnlyCollection<AvailabilityRule> Availabilities => _availabilities.AsReadOnly();
     #region Constructor for EF
 #pragma warning disable CS8618
     private Doctor()
@@ -23,7 +28,8 @@ public class Doctor : EntityBase
 #pragma warning restore CS8618
     #endregion
 
-    public Doctor(
+    //Lo crea su especialidad (Creador): ver <see cref="Speciality.AddDoctor(string, string?, bool)">
+    internal Doctor(
         string name, 
         string? licenseNumber, 
         Speciality speciality, 
@@ -33,9 +39,8 @@ public class Doctor : EntityBase
        
         Name = name.Trim();
         LicenseNumber = string.IsNullOrWhiteSpace(licenseNumber) ? null : licenseNumber.Trim();
-        Speciality = speciality;
-        SpecialityId = speciality.Id;
         Deleted = false;
+        AssignSpeciality(speciality);
     }
 
     public void Update(
@@ -47,8 +52,11 @@ public class Doctor : EntityBase
 
         Name = name.Trim();
         LicenseNumber = string.IsNullOrWhiteSpace(licenseNumber) ? null : licenseNumber.Trim();
-        Speciality = speciality;
-        SpecialityId = speciality.Id;
+        if (speciality.Id != SpecialityId)
+        {
+            Speciality?.RemoveDoctor(this);
+            AssignSpeciality(speciality);
+        }
     }
 
     public void Delete()
@@ -57,6 +65,70 @@ public class Doctor : EntityBase
 
     }
 
+    //Experto: el médico conoce sus disponibilidades
+
+    //Indica si el rango pisa una disponibilidad vigente (no eliminada) del mismo día, mes y año.
+    public bool HasAvailabilityOverlap(
+        byte month,
+        short year,
+        byte dayOfWeek,
+        TimeSpan startTime,
+        TimeSpan endTime) =>
+        _availabilities.Any(rule =>
+            !rule.Deleted
+            && rule.Month == month
+            && rule.Year == year
+            && rule.DayOfWeek == dayOfWeek
+            && startTime < rule.EndTime
+            && rule.StartTime < endTime);
+    //Creador: el médico crea sus disponibilidades
+
+    //Crea y registra una disponibilidad. Falla con conflicto si se superpone con otra vigente.
+    public AvailabilityRule AddAvailability(
+        byte month,
+        short year,
+        byte dayOfWeek,
+        TimeSpan startTime,
+        TimeSpan endTime)
+    {
+        if (HasAvailabilityOverlap(month, year, dayOfWeek, startTime, endTime))
+        {
+            throw new ConflictException(
+                ErrorCodes.SCHEDULE_OVERLAP,
+                nameof(ErrorCodes.SCHEDULE_OVERLAP));
+        }
+
+        var rule = new AvailabilityRule(this, month, year, dayOfWeek, startTime, endTime);
+
+        _availabilities.Add(rule);
+
+        return rule;
+    }
+
+    //Da de baja las disponibilidades vigentes del mes y sus turnos libres futuros.
+    //Los turnos pasados o reservados se conservan.
+    public void ClearAvailabilities(
+        byte month,
+        short year,
+        DateOnly today,
+        TimeSpan nowTime,
+        DateTime now)
+    {
+        foreach (var rule in _availabilities.Where(r => !r.Deleted && r.Month == month && r.Year == year))
+        {
+            rule.DeleteFreeFutureSlots(today, nowTime, now);
+            rule.Delete();
+            rule.UpdatedAt = now;
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.MemberNotNull(nameof(Speciality))]
+    private void AssignSpeciality(Speciality speciality)
+    {
+        Speciality = speciality;
+        SpecialityId = speciality.Id;
+        speciality.Register(this);
+    }
     private static void Validate(
         string name,
         string? licenseNumber,
