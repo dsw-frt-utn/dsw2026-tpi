@@ -72,6 +72,14 @@ namespace Dsw2026Tpi.Application.Services
                 doctor.ClearAvailabilities(month, year, today, now.TimeOfDay, now);
             }
 
+            var existingSlots = await _persistence.GetFiltered<AvailabilitySlot>(
+                s => s.DoctorId == doctor.Id && !s.Deleted && s.SlotDate >= today) ?? [];
+
+            var occupied = existingSlots
+                .Where(s => !s.Deleted)
+                .Select(s => (s.SlotDate, s.StartTime))
+                .ToHashSet();
+
             var createdRules = new List<AvailabilityRule>();
             var createdSlots = new List<AvailabilitySlot>();
 
@@ -81,7 +89,7 @@ namespace Dsw2026Tpi.Application.Services
                 rule.CreatedAt = now;
                 rule.UpdatedAt = now;
 
-                var slots = _generator.GenerateSlotsForMonth(rule, today, now.TimeOfDay);
+                var slots = _generator.GenerateSlotsForMonth(rule, today, now.TimeOfDay, occupied);
 
                 foreach (var slot in slots)
                 {
